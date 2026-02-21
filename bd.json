@@ -1,0 +1,13 @@
+{
+    "version": "0.52.0",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/steveyegge/beads/releases/download/v0.52.0/beads_0.52.0_windows_amd64.zip",
+            "hash": "ed807cdaf3903f6519ac9d78eb193fa1a40431af7405b063daffb9eb8bff227e",
+            "bin": ["bd.exe"]
+        }
+    },
+    "homepage": "https://github.com/steveyegge/beads",
+    "license": "MIT",
+    "description": "Git-native, AI-optimized issue tracker that lives in your repo"
+}

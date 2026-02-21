@@ -1,0 +1,54 @@
+name: Update bd manifest
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # every 6 hours
+  workflow_dispatch:         # manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get latest release version
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(gh api repos/steveyegge/beads/releases/latest --jq '.tag_name | ltrimstr("v")')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check if update needed
+        id: check
+        run: |
+          CURRENT=$(jq -r '.version' bd.json)
+          if [ "${{ steps.release.outputs.version }}" != "$CURRENT" ]; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update manifest
+        if: steps.check.outputs.needed == 'true'
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          HASH=$(curl -sL "https://github.com/steveyegge/beads/releases/download/v${VERSION}/checksums.txt" \
+            | grep "windows_amd64.zip" | awk '{print $1}')
+          jq --arg v "$VERSION" --arg h "$HASH" \
+            '.version = $v |
+             .architecture["64bit"].url = "https://github.com/steveyegge/beads/releases/download/v\($v)/beads_\($v)_windows_amd64.zip" |
+             .architecture["64bit"].hash = $h' \
+            bd.json > bd.json.tmp && mv bd.json.tmp bd.json
+
+      - name: Commit and push
+        if: steps.check.outputs.needed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bd.json
+          git commit -m "Update bd to v${VERSION}"
+          git push
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
